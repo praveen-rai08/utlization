@@ -1,0 +1,18 @@
+# Output files
+*.xlsx
+*.html
+*.csv
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment
+.env
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
