@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(start chrome:*)",
+      "Bash(cmd.exe /c \"start chrome\")",
+      "Read(//c/Users/202294/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/d0eaddda-89b6-4146-8a96-6ca8e8e440e7/06cfbedf-2b89-47c1-8a1a-67b6e102089b/skills/xlsx/**)",
+      "Bash(python -c \":*)",
+      "Bash(cmd.exe /c \"python --version 2>&1 || py --version 2>&1 || python3 --version 2>&1\")"
+    ]
+  }
+}
