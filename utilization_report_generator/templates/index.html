@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QEA - Utilization Report Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(-45deg, #667eea, #764ba2, #43a8c9, #5e35b1);
+            background-size: 400% 400%;
+            animation: gradientShift 12s ease infinite;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 30px 20px;
+        }
+
+        @keyframes gradientShift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+            max-width: 760px;
+            width: 100%;
+            padding: 44px 48px;
+        }
+
+        /* ── Header ────────────────────────────────── */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header-logo {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 14px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+        }
+
+        .header h1 {
+            color: #1e3a5f;
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .header p {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        /* ── Upload Area ────────────────────────────── */
+        .upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 10px;
+            padding: 44px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            background: #f8fafc;
+            margin-bottom: 16px;
+            outline: none;
+        }
+
+        .upload-area:hover,
+        .upload-area:focus,
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+
+        .upload-icon {
+            font-size: 44px;
+            margin-bottom: 12px;
+            transition: transform 0.2s;
+        }
+
+        .upload-area:hover .upload-icon,
+        .upload-area.dragover .upload-icon {
+            transform: translateY(-4px);
+        }
+
+        .upload-area p {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .upload-hint {
+            font-size: 12px !important;
+            color: #94a3b8 !important;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* ── Inline validation error ────────────────── */
+        .file-type-error {
+            display: none;
+            color: #991b1b;
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 13px;
+            margin-bottom: 14px;
+        }
+
+        .file-type-error.show { display: flex; align-items: center; gap: 8px; }
+
+        /* ── Selected File ──────────────────────────── */
+        .selected-file {
+            display: none;
+            background: #f0f7ff;
+            border: 1px solid #bfdbfe;
+            padding: 12px 14px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .selected-file.show { display: flex; }
+
+        .selected-file-icon { font-size: 20px; flex-shrink: 0; }
+
+        .selected-file-info { flex: 1; min-width: 0; }
+
+        .file-name {
+            color: #1e3a5f;
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-size {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .btn-clear {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            transition: color 0.2s, background 0.2s;
+        }
+
+        .btn-clear:hover { color: #ef4444; background: #fee2e2; }
+
+        /* ── Primary Button ─────────────────────────── */
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 13px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+            width: 100%;
+            letter-spacing: 0.3px;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(102, 126, 234, 0.35);
+        }
+
+        .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        /* ── Loading ────────────────────────────────── */
+        .loading { display: none; padding: 10px 0; }
+        .loading.show { display: block; }
+
+        .progress-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #94a3b8;
+            background: #f8fafc;
+            transition: all 0.4s ease;
+        }
+
+        .step.active {
+            color: #1e3a5f;
+            background: #eff6ff;
+            border-left: 3px solid #667eea;
+        }
+
+        .step.done {
+            color: #166534;
+            background: #f0fdf4;
+            border-left: 3px solid #22c55e;
+        }
+
+        .step-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+
+        .step-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #dbeafe;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .progress-bar-wrap {
+            background: #e2e8f0;
+            border-radius: 99px;
+            height: 6px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 99px;
+            transition: width 0.4s ease;
+            width: 0%;
+        }
+
+        .progress-label {
+            color: #64748b;
+            font-size: 12px;
+            text-align: right;
+            margin-bottom: 20px;
+        }
+
+        .btn-cancel {
+            background: none;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            display: block;
+            margin: 0 auto;
+            transition: all 0.2s;
+        }
+
+        .btn-cancel:hover { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+
+        /* ── Results ────────────────────────────────── */
+        .results { display: none; }
+        .results.show { display: block; }
+
+        .success-banner {
+            background: linear-gradient(135deg, #dcfce7, #d1fae5);
+            border: 1px solid #86efac;
+            color: #166534;
+            padding: 14px 18px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .success-banner-left { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+        .report-timestamp { font-size: 12px; color: #16a34a; white-space: nowrap; }
+
+        /* ── Summary + Donut ────────────────────────── */
+        .summary-wrapper {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 20px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            align-items: start;
+        }
+
+        .summary h3 {
+            color: #1e3a5f;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 14px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat {
+            background: white;
+            padding: 13px 14px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat.green  { border-left-color: #22c55e; }
+        .stat.yellow { border-left-color: #eab308; }
+        .stat.red    { border-left-color: #ef4444; }
+        .stat.blue   { border-left-color: #3b82f6; }
+        .stat.purple { border-left-color: #667eea; }
+
+        .stat-label {
+            color: #64748b;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: #1e3a5f;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        /* ── Donut Chart ────────────────────────────── */
+        .donut-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            min-width: 130px;
+        }
+
+        .donut-wrap svg { overflow: visible; }
+
+        .donut-label {
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+
+        .donut-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #475569;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* ── Download Buttons ───────────────────────── */
+        .download-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .btn-download {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 13px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-excel {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1.5px solid #86efac;
+        }
+
+        .btn-excel:hover { background: #dcfce7; border-color: #4ade80; }
+
+        .btn-html {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1.5px solid #93c5fd;
+        }
+
+        .btn-html:hover { background: #dbeafe; border-color: #60a5fa; }
+
+        .btn-reset {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .btn-reset:hover { background: #e2e8f0; }
+
+        /* ── Error ──────────────────────────────────── */
+        .error-message {
+            display: none;
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            color: #991b1b;
+            padding: 14px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .error-message.show { display: flex; }
+        .error-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+        /* ── Toast ──────────────────────────────────── */
+        #toast {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: white;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            transform: translateY(80px);
+            opacity: 0;
+            transition: transform 0.35s ease, opacity 0.35s ease;
+            z-index: 1000;
+            max-width: 320px;
+        }
+
+        #toast.show { transform: translateY(0); opacity: 1; }
+        #toast.success { background: #166534; }
+        #toast.error   { background: #991b1b; }
+        #toast.info    { background: #1d4ed8; }
+
+        /* ── Responsive ─────────────────────────────── */
+        @media (max-width: 560px) {
+            .container { padding: 28px 20px; }
+            .summary-wrapper { grid-template-columns: 1fr; }
+            .donut-wrap { flex-direction: row; }
+            .stat-grid { grid-template-columns: 1fr; }
+            .download-buttons { grid-template-columns: 1fr; }
+            .success-banner { flex-direction: column; align-items: flex-start; gap: 4px; }
+        }
+
+        @media (max-width: 400px) {
+            .stat-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <!-- Header -->
+        <div class="header">
+            <div class="header-logo">📊</div>
+            <h1>QEA Utilization Report Generator</h1>
+            <p>Generate comprehensive leave and utilization reports in minutes</p>
+        </div>
+
+        <!-- Upload Section -->
+        <div id="uploadSection">
+
+            <div class="upload-area" id="uploadArea" tabindex="0" role="button" aria-label="Upload Excel file">
+                <div class="upload-icon">📁</div>
+                <p><strong>Click to upload or drag and drop</strong></p>
+                <p class="upload-hint">Excel files only (.xlsx, .xls) · Max 500 MB</p>
+                <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls">
+            </div>
+
+            <div class="file-type-error" id="fileTypeError">
+                <span>⚠️</span>
+                <span>Only Excel files (.xlsx, .xls) are supported. Please select a valid file.</span>
+            </div>
+
+            <div class="selected-file" id="selectedFile">
+                <span class="selected-file-icon">📄</span>
+                <div class="selected-file-info">
+                    <div class="file-name" id="fileName"></div>
+                    <div class="file-size" id="fileSize"></div>
+                </div>
+                <button class="btn-clear" id="clearFileBtn" title="Remove file">✕</button>
+            </div>
+
+            <button class="btn" id="uploadBtn" disabled>Generate Reports</button>
+        </div>
+
+        <!-- Loading Section -->
+        <div class="loading" id="loading" aria-live="polite">
+            <div class="progress-steps" id="progressSteps">
+                <div class="step" id="step1">
+                    <span class="step-icon">📤</span>
+                    <span>Uploading file…</span>
+                </div>
+                <div class="step" id="step2">
+                    <span class="step-icon">📖</span>
+                    <span>Reading employee data…</span>
+                </div>
+                <div class="step" id="step3">
+                    <span class="step-icon">📊</span>
+                    <span>Generating Excel report…</span>
+                </div>
+                <div class="step" id="step4">
+                    <span class="step-icon">🌐</span>
+                    <span>Building HTML dashboard…</span>
+                </div>
+            </div>
+
+            <div class="progress-bar-wrap">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-label" id="progressLabel">0%</div>
+
+            <button class="btn-cancel" id="cancelBtn">Cancel</button>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results" id="results" aria-live="polite">
+
+            <div class="success-banner">
+                <div class="success-banner-left">✅ Reports generated successfully!</div>
+                <div class="report-timestamp" id="reportTimestamp"></div>
+            </div>
+
+            <div class="summary-wrapper">
+                <div>
+                    <h3>Summary</h3>
+                    <div class="stat-grid">
+                        <div class="stat blue">
+                            <div class="stat-label">Total Associates</div>
+                            <div class="stat-value" id="totalAssociates">—</div>
+                        </div>
+                        <div class="stat purple">
+                            <div class="stat-label">Avg Utilization</div>
+                            <div class="stat-value" id="avgUtil">—</div>
+                        </div>
+                        <div class="stat green">
+                            <div class="stat-label">High ≥ 90%</div>
+                            <div class="stat-value" id="highUtil">—</div>
+                        </div>
+                        <div class="stat yellow">
+                            <div class="stat-label">Medium 80–90%</div>
+                            <div class="stat-value" id="medUtil">—</div>
+                        </div>
+                        <div class="stat red">
+                            <div class="stat-label">Low &lt; 80%</div>
+                            <div class="stat-value" id="lowUtil">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Donut Chart -->
+                <div class="donut-wrap">
+                    <svg id="donutSvg" width="120" height="120" viewBox="0 0 120 120">
+                        <circle cx="60" cy="60" r="44" fill="none" stroke="#e2e8f0" stroke-width="16"/>
+                        <circle id="donutHigh"   cx="60" cy="60" r="44" fill="none" stroke="#22c55e" stroke-width="16"
+                            stroke-dasharray="0 276.46" stroke-dashoffset="0"
+                            transform="rotate(-90 60 60)" style="transition: stroke-dasharray 0.8s ease;"/>
+                        <circle id="donutMed"    cx="60" cy="60" r="44" fill="none" stroke="#eab308" stroke-width="16"
+                            stroke-dasharray="0 276.46" stroke-dashoffset="0"
+                            transform="rotate(-90 60 60)" style="transition: stroke-dasharray 0.8s ease 0.2s;"/>
+                        <circle id="donutLow"    cx="60" cy="60" r="44" fill="none" stroke="#ef4444" stroke-width="16"
+                            stroke-dasharray="0 276.46" stroke-dashoffset="0"
+                            transform="rotate(-90 60 60)" style="transition: stroke-dasharray 0.8s ease 0.4s;"/>
+                        <text x="60" y="57" class="donut-label" font-size="15" font-weight="700" fill="#1e3a5f" id="donutCenterVal">—</text>
+                        <text x="60" y="72" class="donut-label" font-size="10" fill="#64748b">Avg Util</text>
+                    </svg>
+                    <div class="donut-legend">
+                        <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>High</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div>Medium</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Low</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="download-buttons">
+                <a class="btn-download btn-excel" id="downloadExcel" download>
+                    <span>📗</span> Download Excel
+                </a>
+                <a class="btn-download btn-html" id="viewDashboard" target="_blank" rel="noopener noreferrer">
+                    <span>📈</span> View Dashboard
+                </a>
+            </div>
+
+            <button class="btn-reset" onclick="resetUI()">↩ Generate Another Report</button>
+        </div>
+
+        <!-- Error -->
+        <div class="error-message" id="errorMessage">
+            <span class="error-icon">❌</span>
+            <span id="errorText"></span>
+        </div>
+
+    </div>
+
+    <!-- Toast -->
+    <div id="toast"></div>
+
+    <script>
+        // ── Element refs ────────────────────────────────
+        const uploadArea    = document.getElementById('uploadArea');
+        const fileInput     = document.getElementById('fileInput');
+        const selectedFile  = document.getElementById('selectedFile');
+        const fileNameEl    = document.getElementById('fileName');
+        const fileSizeEl    = document.getElementById('fileSize');
+        const clearFileBtn  = document.getElementById('clearFileBtn');
+        const uploadBtn     = document.getElementById('uploadBtn');
+        const uploadSection = document.getElementById('uploadSection');
+        const loading       = document.getElementById('loading');
+        const results       = document.getElementById('results');
+        const errorMessage  = document.getElementById('errorMessage');
+        const errorText     = document.getElementById('errorText');
+        const fileTypeError = document.getElementById('fileTypeError');
+        const cancelBtn     = document.getElementById('cancelBtn');
+        const progressBar   = document.getElementById('progressBar');
+        const progressLabel = document.getElementById('progressLabel');
+        const toast         = document.getElementById('toast');
+
+        let currentFile = null;
+        let abortController = null;
+        let stepTimer = null;
+
+        // ── Toast ────────────────────────────────────────
+        function showToast(msg, type = 'info', duration = 3500) {
+            toast.textContent = msg;
+            toast.className = `show ${type}`;
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => { toast.className = ''; }, duration);
+        }
+
+        // ── File helpers ─────────────────────────────────
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function isValidExcel(name) {
+            return /\.(xlsx|xls)$/i.test(name);
+        }
+
+        function setFile(file) {
+            if (!isValidExcel(file.name)) {
+                fileTypeError.classList.add('show');
+                clearFile();
+                return;
+            }
+            fileTypeError.classList.remove('show');
+            currentFile = file;
+            fileNameEl.textContent = file.name;
+            fileSizeEl.textContent = formatBytes(file.size);
+            selectedFile.classList.add('show');
+            uploadBtn.disabled = false;
+            hideError();
+        }
+
+        function clearFile() {
+            currentFile = null;
+            fileInput.value = '';
+            selectedFile.classList.remove('show');
+            uploadBtn.disabled = true;
+        }
+
+        // ── Upload area interactions ──────────────────────
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                fileInput.click();
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) setFile(e.target.files[0]);
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) setFile(e.dataTransfer.files[0]);
+        });
+
+        clearFileBtn.addEventListener('click', () => {
+            clearFile();
+            fileTypeError.classList.remove('show');
+        });
+
+        // ── Progress steps ───────────────────────────────
+        const STEPS = ['step1','step2','step3','step4'];
+        const STEP_PROGRESS = [15, 40, 70, 95];
+
+        function setStep(index) {
+            STEPS.forEach((id, i) => {
+                const el = document.getElementById(id);
+                el.classList.remove('active','done');
+                const spinnerEl = el.querySelector('.step-spinner');
+                if (spinnerEl) el.removeChild(spinnerEl);
+                if (i < index) {
+                    el.classList.add('done');
+                    el.querySelector('.step-icon').textContent = '✓';
+                } else if (i === index) {
+                    el.classList.add('active');
+                    const spinner = document.createElement('div');
+                    spinner.className = 'step-spinner';
+                    el.insertBefore(spinner, el.querySelector('.step-icon'));
+                    el.querySelector('.step-icon').style.display = 'none';
+                }
+            });
+            const pct = STEP_PROGRESS[index] || 0;
+            progressBar.style.width = pct + '%';
+            progressLabel.textContent = pct + '%';
+        }
+
+        function finishSteps() {
+            STEPS.forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove('active');
+                el.classList.add('done');
+                const spinner = el.querySelector('.step-spinner');
+                if (spinner) el.removeChild(spinner);
+                const icon = el.querySelector('.step-icon');
+                icon.style.display = '';
+                icon.textContent = '✓';
+            });
+            progressBar.style.width = '100%';
+            progressLabel.textContent = '100%';
+        }
+
+        function resetSteps() {
+            const icons = ['📤','📖','📊','🌐'];
+            STEPS.forEach((id, i) => {
+                const el = document.getElementById(id);
+                el.classList.remove('active','done');
+                const spinner = el.querySelector('.step-spinner');
+                if (spinner) el.removeChild(spinner);
+                const icon = el.querySelector('.step-icon');
+                icon.style.display = '';
+                icon.textContent = icons[i];
+            });
+            progressBar.style.width = '0%';
+            progressLabel.textContent = '0%';
+        }
+
+        // ── Donut chart ──────────────────────────────────
+        const CIRC = 2 * Math.PI * 44; // ≈ 276.46
+
+        function updateDonut(high, med, low) {
+            const total = high + med + low || 1;
+            const highFrac = high / total;
+            const medFrac  = med  / total;
+            const lowFrac  = low  / total;
+
+            const highLen = highFrac * CIRC;
+            const medLen  = medFrac  * CIRC;
+            const lowLen  = lowFrac  * CIRC;
+
+            // Each ring: dasharray = len rest, offset positions it after previous
+            document.getElementById('donutHigh').setAttribute('stroke-dasharray',  `${highLen} ${CIRC - highLen}`);
+            document.getElementById('donutHigh').style.strokeDashoffset = 0;
+
+            document.getElementById('donutMed').setAttribute('stroke-dasharray',   `${medLen} ${CIRC - medLen}`);
+            document.getElementById('donutMed').style.strokeDashoffset = -highLen;
+
+            document.getElementById('donutLow').setAttribute('stroke-dasharray',   `${lowLen} ${CIRC - lowLen}`);
+            document.getElementById('donutLow').style.strokeDashoffset = -(highLen + medLen);
+        }
+
+        // ── Error helpers ─────────────────────────────────
+        function showError(msg) {
+            errorText.textContent = msg;
+            errorMessage.classList.add('show');
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('show');
+        }
+
+        // ── Cancel ────────────────────────────────────────
+        cancelBtn.addEventListener('click', () => {
+            if (abortController) abortController.abort();
+            clearTimeout(stepTimer);
+            loading.classList.remove('show');
+            uploadSection.style.display = 'block';
+            resetSteps();
+            showToast('Generation cancelled.', 'info');
+        });
+
+        // ── Main upload + generate ────────────────────────
+        uploadBtn.addEventListener('click', async () => {
+            if (!currentFile) return;
+
+            abortController = new AbortController();
+            const formData = new FormData();
+            formData.append('file', currentFile);
+
+            uploadSection.style.display = 'none';
+            results.classList.remove('show');
+            hideError();
+            resetSteps();
+            loading.classList.add('show');
+
+            // Animate steps with timing
+            setStep(0);
+            stepTimer = setTimeout(() => setStep(1), 800);
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                    signal: abortController.signal
+                });
+
+                clearTimeout(stepTimer);
+                setStep(2);
+                await new Promise(r => setTimeout(r, 600));
+                setStep(3);
+                await new Promise(r => setTimeout(r, 500));
+
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.error || 'Upload failed');
+
+                finishSteps();
+                await new Promise(r => setTimeout(r, 400));
+
+                // Populate summary
+                const s = data.summary;
+                document.getElementById('totalAssociates').textContent = s.total_associates;
+                document.getElementById('avgUtil').textContent         = s.overall_avg_util;
+                document.getElementById('highUtil').textContent        = s.high_util_count;
+                document.getElementById('medUtil').textContent         = s.medium_util_count;
+                document.getElementById('lowUtil').textContent         = s.low_util_count;
+
+                // Donut
+                document.getElementById('donutCenterVal').textContent = s.overall_avg_util;
+                updateDonut(s.high_util_count, s.medium_util_count, s.low_util_count);
+
+                // Timestamp
+                document.getElementById('reportTimestamp').textContent =
+                    'Generated: ' + new Date().toLocaleString();
+
+                // Download links
+                document.getElementById('downloadExcel').href =
+                    '/api/download/excel?path=' + encodeURIComponent(data.excel_path);
+                document.getElementById('viewDashboard').href =
+                    '/api/download/html?path=' + encodeURIComponent(data.html_path);
+
+                loading.classList.remove('show');
+                results.classList.add('show');
+                showToast('Reports ready! 🎉', 'success');
+
+            } catch (err) {
+                clearTimeout(stepTimer);
+                if (err.name === 'AbortError') return;
+                showError('❌ ' + err.message);
+                loading.classList.remove('show');
+                uploadSection.style.display = 'block';
+                resetSteps();
+                showToast(err.message, 'error');
+            }
+        });
+
+        // ── Reset ─────────────────────────────────────────
+        function resetUI() {
+            results.classList.remove('show');
+            hideError();
+            clearFile();
+            fileTypeError.classList.remove('show');
+            resetSteps();
+            uploadSection.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

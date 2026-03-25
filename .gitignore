@@ -1,7 +1,10 @@
-# Output files
+# Output files (generated reports)
 *.xlsx
-*.html
 *.csv
+QEA-UHG-*.html
+
+# Keep templates
+!utilization_report_generator/templates/*.html
 
 # Python cache
 __pycache__/
